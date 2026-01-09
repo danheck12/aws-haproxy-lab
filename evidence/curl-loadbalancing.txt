@@ -1,0 +1,12 @@
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1> 
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>

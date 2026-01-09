@@ -1,0 +1,65 @@
+# hit LB a few times
+curl http://LB_PUBLIC_IP
+curl http://LB_PUBLIC_IP
+
+# stop nginx on web-01 (ssh in and stop it)
+# then hit LB again and show it still responds from web-02
+curl http://LB_PUBLIC_IP
+
+####### Output of my test
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1> 
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+ 
+
+
+###### After stopping web-02
+
+ user@linux:~$ curl http://3.22.112.157
+ <h1>Served by web-01</h1>
+ user@linux:~$ curl http://3.22.112.157
+ <h1>Served by web-01</h1>
+ user@linux:~$ curl http://3.22.112.157
+ <h1>Served by web-01</h1>
+ user@linux:~$ curl http://3.22.112.157
+ <h1>Served by web-01</h1>
+ user@linux:~$ curl http://3.22.112.157
+ <h1>Served by web-01</h1> 
+
+###### After restarting web-02 and stopping web-01
+
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+
+##### After Restarting web-01 and now both should be working as normal
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-02</h1>
+user@linux:~$ curl http://3.22.112.157
+<h1>Served by web-01</h1>
