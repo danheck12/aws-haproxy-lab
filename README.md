@@ -1,18 +1,20 @@
- AWS EC2 Load Balancing Lab (HAProxy + Nginx)
+# AWS EC2 Load Balancing Lab (HAProxy + Nginx)
 
 ![Last Commit](https://img.shields.io/github/last-commit/danheck12/aws-haproxy-lab)
 ![Repo Size](https://img.shields.io/github/repo-size/danheck12/aws-haproxy-lab)
 ![Stars](https://img.shields.io/github/stars/danheck12/aws-haproxy-lab?style=social)
 
-A small AWS lab demonstrating **Layer 7 HTTP load balancing** with HAProxy and two Nginx backends on EC2.
+Hands-on AWS lab demonstrating **Layer 7 HTTP load balancing** using HAProxy and two Nginx backends on EC2.  
+Designed to validate Linux service management, basic AWS networking design, and operational verification.
 
-- `lb-01`: HAProxy (public entrypoint)
-- `web-01`, `web-02`: Nginx backends
+- **lb-01** – HAProxy (public entrypoint)
+- **web-01**, **web-02** – Nginx backends
 - Round-robin balancing + health-check based failover
 
 ---
 
 ## Table of Contents
+
 - [Architecture](#architecture)
 - [What This Proves](#what-this-proves)
 - [Repository Structure](#repository-structure)
@@ -38,15 +40,21 @@ v v
 yaml
 Copy code
 
+- HAProxy listens on port 80 and distributes traffic to backend Nginx servers.
+- Backends are accessed via private IPs.
+- Health checks ensure only healthy nodes receive traffic.
+
 ---
 
 ## What This Proves
-- Linux service installation and management (systemd)
-- HAProxy configuration: frontend/backend, health checks, failover
+
+- Linux package installation and service management
+- HAProxy configuration: frontend, backend, health checks, failover
 - Basic AWS networking design:
-  - public access to LB
-  - controlled access to backend tier
-- Operational validation with recorded evidence
+  - public access to load balancer
+  - restricted access to backend tier
+- Operational validation using real traffic and failure testing
+- Evidence collection for reproducibility
 
 ---
 
@@ -63,7 +71,7 @@ Copy code
 │ └── failover-test.txt
 └── diagrams/ # Architecture diagrams (optional)
 
-pgsql
+yaml
 Copy code
 
 ---
@@ -71,36 +79,61 @@ Copy code
 ## Getting Started
 
 ### Prerequisites
-- AWS account access to create EC2 instances and security groups
+
+- AWS account with EC2 + Security Group permissions
 - SSH keypair for EC2 access
-- 3 Ubuntu instances recommended (or Amazon Linux 2 if you prefer):
-  - `lb-01`, `web-01`, `web-02`
+- 3 EC2 instances (Ubuntu 22.04+ recommended):
+  - `lb-01`
+  - `web-01`
+  - `web-02`
+- Basic familiarity with SSH and Linux package management
 
-### 1) Create Security Groups
-See [Security Group Design](#security-group-design) below.
+---
 
-### 2) Install and configure Nginx on web nodes
+### 1) Create EC2 Instances
+
+Launch three instances in the same VPC/subnet:
+
+| Name   | Role     | Public IP | Private IP |
+|--------|----------|-----------|------------|
+| lb-01  | HAProxy  | Yes       | Yes        |
+| web-01 | Nginx    | Optional  | Yes        |
+| web-02 | Nginx    | Optional  | Yes        |
+
+Tag them accordingly for clarity.
+
+---
+
+### 2) Install and Configure Nginx on Backends
+
 On **web-01** and **web-02**:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y nginx
-
-# Replace the default index.html with the per-node file from this repo
-# (copy web-01.index.html to web-01, web-02.index.html to web-02)
-sudo tee /var/www/html/index.html >/dev/null <<'EOF'
-REPLACE_ME
-EOF
-
 sudo systemctl enable --now nginx
+Replace the default page with the per-node file from this repo.
+
+For web-01:
+
+bash
+Copy code
+sudo tee /var/www/html/index.html >/dev/null <<'EOF'
+<contents of nginx/web-01.index.html>
+EOF
+For web-02:
+
+bash
+Copy code
+sudo tee /var/www/html/index.html >/dev/null <<'EOF'
+<contents of nginx/web-02.index.html>
+EOF
+Validate:
+
+bash
+Copy code
 curl -s localhost | head
-Tip: the simplest way is to copy/paste the contents of:
-
-nginx/web-01.index.html onto web-01
-
-nginx/web-02.index.html onto web-02
-
-3) Install and configure HAProxy on lb-01
+3) Install and Configure HAProxy
 On lb-01:
 
 bash
@@ -108,17 +141,22 @@ Copy code
 sudo apt-get update
 sudo apt-get install -y haproxy
 sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
-Copy your repo config (haproxy/haproxy.cfg) into place and update backend IPs:
+Copy the repo config into place:
 
 bash
 Copy code
 sudo nano /etc/haproxy/haproxy.cfg
-# set web-01 and web-02 private IPs in the backend section
-Then:
+Update the backend section with private IPs of web-01 and web-02.
+
+Validate config:
 
 bash
 Copy code
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+Restart service:
+
+bash
+Copy code
 sudo systemctl restart haproxy
 sudo systemctl status haproxy --no-pager
 Configuration
@@ -130,36 +168,43 @@ nginx/web-01.index.html
 
 nginx/web-02.index.html
 
-Validation
-Load balancing (round robin)
-See: evidence/curl-loadbalancing.txt
+Ensure backend IPs in HAProxy match your actual EC2 private IPs.
 
-From your machine:
+Validation
+1) Load Balancing (Round Robin)
+From your local machine:
 
 bash
 Copy code
 LB_PUBLIC_IP="<lb-01 public ip>"
-for i in {1..6}; do curl -s http://$LB_PUBLIC_IP | head -n 2; echo "----"; done
+
+for i in {1..6}; do
+  curl -s http://$LB_PUBLIC_IP | head -n 2
+  echo "----"
+done
 Expected:
 
-responses alternate between web-01 and web-02
+Output alternates between web-01 and web-02
 
-Failover test
-See: evidence/failover-test.txt
-
-Procedure:
-
-Stop nginx on one backend:
+2) Failover Test
+On one backend (e.g. web-01):
 
 bash
 Copy code
 sudo systemctl stop nginx
-Confirm traffic still serves via the healthy node:
+From your machine:
 
 bash
 Copy code
-for i in {1..10}; do curl -s http://$LB_PUBLIC_IP | head -n 2; echo "----"; done
-Start nginx again:
+for i in {1..10}; do
+  curl -s http://$LB_PUBLIC_IP | head -n 2
+  echo "----"
+done
+Expected:
+
+Traffic continues via the healthy backend only
+
+Restart service:
 
 bash
 Copy code
@@ -172,9 +217,17 @@ TCP 22 from your IP
 
 TCP 80 from 0.0.0.0/0
 
-web-01 & web-02 Security Group (sg-web)
+Outbound:
+
+All (default)
+
+web-01 / web-02 Security Group (sg-web)
 Inbound:
 
-TCP 22 from your IP (or via bastion/SSM)
+TCP 22 from your IP (or via SSM)
 
-TCP 80 from sg-lb only (LB → web tier)
+TCP 80 from sg-lb only
+
+Outbound:
+
+All (default)
